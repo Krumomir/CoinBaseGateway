@@ -11,11 +11,13 @@ app.secret_key = 'ballzinyojawz'
 
 MICROSERVICE_URL = 'http://localhost:8080/api'
 
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6380')
-Session(app)
+db = redis.Redis(host='redis', port=6379, db=0)
 
-db = redis.Redis(host='localhost', port=6380, db=0)
+# Set SESSION_REDIS before initializing Flask-Session
+app.config['SESSION_REDIS'] = db
+
+app.config['SESSION_TYPE'] = 'redis'
+Session(app)
 
 def init():
     db.flushdb()
