@@ -30,12 +30,8 @@ def hash_password(password):
 def authenticate():
     username = session.get('username')
     token = session.get('token')
-    print("hello")
-    print(username)
-    print(token)
     if username and token:
         stored_token = session.get('session:' + username)
-        print(stored_token)
         if stored_token and stored_token == token:
             return True
     return False
@@ -53,6 +49,13 @@ def register():
     password = request.json.get('password')
     age = request.json.get('age')
     currency = request.json.get('currency_type')
+    userEmail = request.json.get('email')
+
+    if currency == None:
+        return jsonify({"error": "Currency type is required"}), 400
+
+    if userEmail == None:
+        return jsonify({"error": "Email is required"}), 400
 
     if age < 18:
         return jsonify({"error": "Age must be at least 18"}), 400
@@ -62,7 +65,7 @@ def register():
 
     hashed_password = hash_password(password)
     # db.set(key, value)
-    db.set(username, json.dumps({"password": hashed_password, "age": age, "currency_type": currency}))
+    db.set(username, json.dumps({"password": hashed_password, "age": age, "currency_type": currency, "email": userEmail}))
 
     return jsonify({"message": "User registered successfully"}), 200
 
@@ -71,6 +74,9 @@ def login():
     username = request.json.get('username')
     password = request.json.get('password')
     
+    if not db.get(username):
+        return jsonify({"error": "User does not exist"}), 400
+
     session['username'] = username
     token = str(uuid.uuid4())
     session['token'] = token
@@ -87,7 +93,7 @@ def logout():
         return jsonify({"message": username + " logged out successfully"}), 200
     return jsonify({"message": "No user is logged in"}), 200
 
-@app.route('/balance/', methods=['GET'])
+@app.route('/balance', methods=['GET'])
 def get_balance():
     if not authenticate():
         return jsonify({"error": "User not authenticated"}), 401
@@ -108,10 +114,26 @@ def add_balance():
     if amount < 0:
         return jsonify({"error": "Amount must be positive"}), 400
 
+    data_str = db.get(userId).decode('utf-8')
+    data_dict = json.loads(data_str)
+    currency_type = data_dict.get('currency_type')
+    email = data_dict.get('email')
 
-    data = {'userId': userId, 'amount': amount}
+    if currency_type == None:
+        return jsonify({"error": "Currency type is required"}), 400
+
+    if email == None:
+        return jsonify({"error": "Email is required"}), 400
+
+    data = {'userId': userId, 'amount': amount, 'currencyType': currency_type, "userEmailAddress": email}
     response = requests.post(MICROSERVICE_URL + '/add/balance', json=data)
-    return {"balance": response.json()}
+    if response.text.strip():  # Check if the response is not empty
+        try:
+            return {"balance": response.json()}
+        except ValueError:
+            return jsonify({"error": "Invalid response from server"}), 500
+    else:
+        return jsonify({"error": "Empty response from server"}), 500
 
 @app.route('/buy', methods=['POST'])
 def buy():
