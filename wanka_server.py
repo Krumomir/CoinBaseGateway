@@ -9,9 +9,9 @@ import json
 app = Flask(__name__)
 app.secret_key = 'ballzinyojawz'
 
-MICROSERVICE_URL = 'http://localhost:8080/api'
+MICROSERVICE_URL = 'http://java-app:8080/api'
 
-db = redis.Redis(host='redis', port=6379, db=0)
+db = redis.Redis(host='redis', port=6379, db=0, username='alice', password='alicepassword')
 
 # Set SESSION_REDIS before initializing Flask-Session
 app.config['SESSION_REDIS'] = db
@@ -37,6 +37,10 @@ def authenticate():
         if stored_token and stored_token == token:
             return True
     return False
+
+@app.route('/')
+def home():
+    return "Welcome to Wanka Server"
 
 @app.route('/is_logged_in', methods=['GET'])
 def is_logged_in():
@@ -183,4 +187,4 @@ def sell():
 
 if __name__ == '__main__':
     clear_sessions()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
